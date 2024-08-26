@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "noteblockrecorder",
+  "version": "${version}",
+  "name": "Note block logger",
+  "description": "Listens for packets and reconstructs a .json file from them",
+  "authors": [],
+  "contact": {},
+  "license": "mit",
+  "icon": "assets/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "client": [
+      "org.kr1v.noteblockrecorder.client.NoteblockrecorderClient"
+    ],
+    "main": [
+      "org.kr1v.noteblockrecorder.Noteblockrecorder"
+    ]
+  },
+  "mixins": [
+    "noteblockrecorder.mixins.json",
+    {
+      "config": "noteblockrecorder.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
