@@ -1,6 +1,5 @@
 package org.kr1v.noteblockrecorder.client;
 
-// Class to represent the header part of the JSON
 public class Header {
     private final int length;
     private final int file_version;
@@ -51,8 +50,6 @@ public class Header {
         this.loop_max = loop_max;
         this.loop_start = loop_start;
     }
-
-    // Getters (if needed)
     public int getLength() { return length; }
     public int getFileVersion() { return file_version; }
     public int getVaniInst() { return vani_inst; }

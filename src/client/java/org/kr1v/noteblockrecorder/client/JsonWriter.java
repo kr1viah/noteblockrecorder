@@ -2,6 +2,7 @@ package org.kr1v.noteblockrecorder.client;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.minecraft.client.MinecraftClient;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -12,23 +13,23 @@ public class JsonWriter {
     static List<Note> notes = new ArrayList<>();
     static List<Layer> layers = new ArrayList<>();
     static List<CustomInstruments> custom_instruments = Instruments.getCustomInstruments();
+    static String name = "name";
     public static void main(int highestlayer) {
-        // Create some sample notes
-//        notes.add(new Note(0, 6, 1, 36, 100, 0, 1));
-//        notes.add(new Note(0, 1, 0, 43, 20, -70, 1));
-//        notes.add(new Note(0, 2, 0, 48, 20, -70, 1));
 
-
+        assert MinecraftClient.getInstance().player != null;
+        if (MinecraftClient.getInstance().player.getName() != null) {
+            name = MinecraftClient.getInstance().player.getName().getString();
+        }
         // Create a header
         Header header = new Header(
                 notes.getLast().getTick() + 1, // length
                 5, // file_version
                 16, // vani_inst
                 highestlayer, // height
-                "kr1v", // name
-                "kr1v", // author
-                "kr1v", // orig_author
-                "Written with a mod by kr1v", // description
+                name, // name
+                name, // author
+                name, // orig_author
+                "Made with Note Block Recorder", // description
                 20.0, // tempo
                 false, // auto_save
                 18, // auto_save_time
@@ -46,18 +47,13 @@ public class JsonWriter {
         for (int i = 0; i < highestlayer; i++) {
             layers.add(new Layer());
         }
-        // Create the JSON structure
         JsonStructure jsonStructure = new JsonStructure(header, notes, layers, custom_instruments);
 
-        // Create Gson instance
-        Gson gson = new GsonBuilder().setPrettyPrinting().create(); // Pretty print for better readability
-
-        // Convert the JsonStructure object to a JSON string
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(jsonStructure);
-        System.out.println("hey do the thing i sasked you");
-        // Write the JSON string to a file
+
         try (FileWriter writer = new FileWriter("notes.json")) {
-            System.out.println("written to: ");
+            System.out.println("written");
             writer.write(json);
         } catch (IOException e) {
             System.out.println("uck");

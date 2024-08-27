@@ -46,21 +46,13 @@ public class Instruments {
         }
 
         HashSet<String> seenSounds = new HashSet<>();
-        System.out.println(instrument.value().getId().getPath());
         int soundId = instrument.value().getId().hashCode();
-        System.out.println("translationKey: " + instrument.value().getId().toTranslationKey());
-        System.out.println("translationKeyShort: " + instrument.value().getId().toShortTranslationKey());
-        System.out.println("type: " + instrument.getType());
         CustomInstruments thingToBeAdded = new CustomInstruments(instrument.value().getId().getPath(), soundId);
         customSounds.add(thingToBeAdded);
         for (int i = 0; i < customSounds.size(); i++) {
             if (Objects.equals(customSounds.get(i).getName(), thingToBeAdded.getName())) {
                 soundId = i + 16;
-                System.out.println("this ones it: " + i);
                 break;
-            }
-            else {
-                System.out.println("this ones not it: " + i);
             }
         }
         customSounds.removeLast();
@@ -68,7 +60,6 @@ public class Instruments {
         customSounds.add(thingToBeAdded);
         customSounds.removeIf(thingToBeAdded2 -> !seenSounds.add(String.valueOf(thingToBeAdded2.sound_id)));
 
-        System.out.println("soundId: " + soundId);
         return soundId;
     }
     public static List<CustomInstruments> getCustomInstruments() {

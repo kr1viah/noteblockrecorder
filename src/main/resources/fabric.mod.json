@@ -4,7 +4,7 @@
   "version": "${version}",
   "name": "Note block logger",
   "description": "Listens for packets and reconstructs a .json file from them",
-  "authors": [],
+  "authors": ["kr1v"],
   "contact": {},
   "license": "mit",
   "icon": "assets/icon.png",
