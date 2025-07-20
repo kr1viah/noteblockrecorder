@@ -1,75 +1,93 @@
 package org.kr1v.noteblockrecorder.client;
 
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.event.Event;
-import net.fabricmc.fabric.api.event.EventFactory;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.network.packet.s2c.play.PlaySoundS2CPacket;
 import net.minecraft.util.ActionResult;
-import org.jetbrains.annotations.Nullable;
+
+import java.io.File;
+import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.*;
 
 public class NoteblockrecorderClient implements ClientModInitializer {
-    private int tick = 0;
-    private int currentlayer = 0;
-    public  int highestlayer = 0;
-
+    public static ArrayList<Batch> noteBatches = new ArrayList<>();
+    public static final int TIME_BETWEEN_BATCHES_THRESHOLD = 20; // in milliseconds
+    public static int highestLayer = 0;
     @Override
     public void onInitializeClient() {
-        ClientTickEvents.START_CLIENT_TICK.register(client -> {
-            @Nullable ClientPlayerEntity player = client.player;
-            if (player != null) {
-                tick = player.age;
+        PlaySoundS2CPacketCallback.EVENT.register((packet) -> {
+            Instant timestamp = Instant.now();
+            if (noteBatches.isEmpty() ||
+                    Duration.between(noteBatches.getLast().timeStamp, timestamp).toMillis()
+                            >= TIME_BETWEEN_BATCHES_THRESHOLD
+                ) {
+                if (!noteBatches.isEmpty()) System.out.println(Long.toString(noteBatches.size()) + ": time " + Duration.between(noteBatches.getLast().timeStamp, timestamp).toMillis() + "ms");
+                noteBatches.add(new Batch(timestamp));
             }
-            if (currentlayer > highestlayer) {
-                highestlayer = currentlayer;
+            noteBatches.getLast().notes.add(packet);
+            if (noteBatches.getLast().notes.size() > highestLayer) {
+                highestLayer = noteBatches.getLast().notes.size();
             }
-            currentlayer = 0;
-        });
-
-        NoteblockrecorderClient.PlaySoundS2CPacketCallback.EVENT.register((packet) -> {
-            int inst = Instruments.main(packet.getSound());
-            if (inst == -1) {
-                System.out.println("aborted");
-                System.out.println("key: " + packet.getSound().getKey());
-                System.out.println();
-                return ActionResult.PASS;
-            }
-            // int vel = (int) (packet.getVolume() * 1/3);
-            int vel = (int) (Math.pow(packet.getVolume() * 1/3, 0.5) * 100);
-
-            int key = Pitch.key(packet.getPitch());
-            int correctedpitch = Pitch.pitch(packet.getPitch());
-
-            Note note = new Note(tick, currentlayer, inst, key, vel, 0, correctedpitch);
-            JsonWriter.notes.add(note);
-            currentlayer++;
-
             return ActionResult.PASS;
         });
         ClientPlayConnectionEvents.DISCONNECT.register(this::onPlayerLeave);
     }
     private void onPlayerLeave(ClientPlayNetworkHandler handler, MinecraftClient server) {
-        JsonWriter.main(highestlayer);
-        highestlayer = 0;
+        if (noteBatches.isEmpty()) return;
+
+        long quantum = detectQuantumNoisy(noteBatches);
+
+        Instant t0 = noteBatches.getFirst().timeStamp;
+
+        // build a quantized list
+        List<QuantizedBatch> quantized = new ArrayList<>(noteBatches.size());
+        for (Batch b : noteBatches) {
+            long deltaMs = Duration.between(t0, b.timeStamp).toMillis();
+            long step    = Math.round((double)deltaMs / quantum);
+            quantized.add(new QuantizedBatch(b.notes, step));
+        }
+        File out = new File(MinecraftClient.getInstance().runDirectory, "recording.nbs");
+	    try {
+		    SaveAsNbs.write(out, quantized, quantum);
+	    } catch (IOException e) {
+		    throw new RuntimeException(e);
+	    }
+
+	    noteBatches = new ArrayList<>();
+        highestLayer = 0;
     }
-    public interface PlaySoundS2CPacketCallback {
-        Event<NoteblockrecorderClient.PlaySoundS2CPacketCallback> EVENT = EventFactory.createArrayBacked(NoteblockrecorderClient.PlaySoundS2CPacketCallback.class,
-                (listeners) -> (packet) -> {
-                    for (NoteblockrecorderClient.PlaySoundS2CPacketCallback listener : listeners) {
-                        ActionResult result = listener.interact(packet);
-
-                        if(result != ActionResult.PASS) {
-                            return result;
-                        }
-                    }
-
-                    return ActionResult.PASS;
-                });
-
-        ActionResult interact(PlaySoundS2CPacket packet);
+    public static long detectQuantumNoisy(List<Batch> batches) {
+        if (batches.size() < 2) return 0;
+        // 1) collect deltas
+        List<Long> deltas = new ArrayList<>();
+        for (int i = 1; i < batches.size(); i++) {
+            long dt = Duration
+                    .between(batches.get(i-1).timeStamp,
+                            batches.get(i  ).timeStamp)
+                    .toMillis();
+            deltas.add(dt);
+        }
+        long minDt = Collections.min(deltas);
+        long maxDt = Collections.max(deltas);
+        int maxK  = (int)Math.ceil((double)maxDt / minDt);
+        // 2) tally candidates
+        Map<Long, Integer> freq = new HashMap<>();
+        for (long dt : deltas) {
+            for (int k = 1; k <= maxK && k <= 10; k++) {
+                long cand = Math.round((double)dt / k);
+                // ignore nonsense quanta
+                if (cand < 5 || cand > 200) continue;
+                freq.merge(cand, 1, Integer::sum);
+            }
+        }
+        // 3) choose the best
+        return freq.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(0L);
     }
+
 }
