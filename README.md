@@ -4,6 +4,7 @@
 2. Download the latest release
 3. Put it in your mods folder
 ## Usage guide
+## NOTE: this is outdated information and isn't up to date with the latest commit. However, it is up to date with the latest tag
 This mod automatically logs any sounds that have the `RECORDS` category. This (in vanilla worlds/servers) is going to be any of the 16 jsonNote blocks (excluding mob heads). After you disconnect/save and quit the mod will put them in `jsonNotes.json` in your .minecraft folder. Use [NBSTool](https://github.com/IoeCmcomc/NBSTool/tree/master) to convert these to .nbs. You can also use NBSTool to convert them to audio files (if the .json doesn't have any custom instruments).
 
 This mod has support for any sounds that have the `RECORDS` category, but aren't one of the 16 jsonNote blocks. It will put them under `custom_instruments` with a name, so when you convert them to .nbs and open them with [Open Note Block Studio](https://opennbs.org/) it will promt you to add the custom sounds.
